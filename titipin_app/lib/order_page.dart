@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'notif_service.dart';
 
 class OrderPage extends StatefulWidget {
   final String jenisOrder;
-  const OrderPage({super.key, required this.jenisOrder});
+  final String? namaTokoAwal;
+  const OrderPage({super.key, required this.jenisOrder, this.namaTokoAwal});
 
   @override
   State<OrderPage> createState() => _OrderPageState();
 }
 
 class _OrderPageState extends State<OrderPage> {
-  final _alamatAsalController = TextEditingController();
+  late TextEditingController _alamatAsalController;
   final _alamatTujuanController = TextEditingController();
   final _catatanController = TextEditingController();
+  final _jarakController = TextEditingController();
   String _metodeBayar = 'cod';
   bool _isLoading = false;
+  double _jarak = 0;
+  double _ongkir = 0;
+  double _jasaTitip = 2000;
 
   String get _judulOrder {
     switch (widget.jenisOrder) {
@@ -24,6 +30,21 @@ class _OrderPageState extends State<OrderPage> {
       case 'kurir': return 'Kurir';
       default: return 'Order';
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _alamatAsalController = TextEditingController(text: widget.namaTokoAwal ?? '');
+    _jarakController.addListener(_hitungOngkir);
+  }
+
+  void _hitungOngkir() {
+    final jarak = double.tryParse(_jarakController.text) ?? 0;
+    setState(() {
+      _jarak = jarak;
+      _ongkir = jarak * 2500 + 2000;
+    });
   }
 
   Future<void> _buatOrder() async {
@@ -41,14 +62,24 @@ class _OrderPageState extends State<OrderPage> {
         'jenis': widget.jenisOrder,
         'alamat_asal': _alamatAsalController.text.trim(),
         'alamat_tujuan': _alamatTujuanController.text.trim(),
+        'jarak_km': _jarak,
         'catatan': _catatanController.text.trim(),
         'metode_bayar': _metodeBayar,
+        'total_biaya': _ongkir + _jasaTitip,
         'status': 'menunggu',
       });
+      await NotifService.kirimNotifDriver(
+        nomorDriver: '6285156411914',
+        jenisOrder: widget.jenisOrder,
+        alamatAsal: _alamatAsalController.text.trim(),
+        alamatTujuan: _alamatTujuanController.text.trim(),
+        metodeBayar: _metodeBayar,
+        totalBiaya: _ongkir + _jasaTitip,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Order berhasil dibuat! Menunggu driver...'),
+            content: Text('Order berhasil dibuat! Driver akan segera dihubungi.'),
             backgroundColor: Color(0xFF00B14F),
           ),
         );
@@ -88,8 +119,8 @@ class _OrderPageState extends State<OrderPage> {
               controller: _alamatAsalController,
               maxLines: 2,
               decoration: InputDecoration(
-                labelText: 'Alamat Asal / Toko',
-                prefixIcon: const Icon(Icons.location_on_outlined, color: Color(0xFF00B14F)),
+                labelText: 'Nama Toko / Alamat Asal',
+                prefixIcon: const Icon(Icons.store_outlined, color: Color(0xFF00B14F)),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
@@ -105,6 +136,18 @@ class _OrderPageState extends State<OrderPage> {
             ),
             const SizedBox(height: 16),
             TextField(
+              controller: _jarakController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Jarak (km)',
+                prefixIcon: const Icon(Icons.social_distance_outlined, color: Color(0xFF00B14F)),
+                suffixText: 'km',
+                helperText: 'Tidak tahu jaraknya? Tanya driver dulu 😊',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
               controller: _catatanController,
               maxLines: 3,
               decoration: InputDecoration(
@@ -113,7 +156,30 @@ class _OrderPageState extends State<OrderPage> {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
-            const SizedBox(height: 24),
+            if (_jarak > 0) ...[
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00B14F).withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF00B14F).withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Rincian Biaya', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 12),
+                    _biayaRow('Jarak', '${_jarak.toStringAsFixed(1)} km'),
+                    _biayaRow('Ongkir (Rp 2.500/km + Rp 2.000)', 'Rp ${_ongkir.toStringAsFixed(0)}'),
+                    _biayaRow('Jasa Titip', 'Rp ${_jasaTitip.toStringAsFixed(0)}'),
+                    const Divider(),
+                    _biayaRow('Total', 'Rp ${(_ongkir + _jasaTitip).toStringAsFixed(0)}', bold: true),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
             const Text('Metode Pembayaran', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             Row(
@@ -181,6 +247,19 @@ class _OrderPageState extends State<OrderPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _biayaRow(String label, String nilai, {bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 13, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+          Text(nilai, style: TextStyle(fontSize: 13, fontWeight: bold ? FontWeight.bold : FontWeight.normal, color: bold ? const Color(0xFF00B14F) : null)),
+        ],
       ),
     );
   }

@@ -11,11 +11,19 @@ class RiwayatPage extends StatefulWidget {
 class _RiwayatPageState extends State<RiwayatPage> {
   List<Map<String, dynamic>> _orders = [];
   bool _isLoading = true;
+  RealtimeChannel? _channel;
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    _subscribeRealtime();
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
   }
 
   Future<void> _loadOrders() async {
@@ -33,6 +41,43 @@ class _RiwayatPageState extends State<RiwayatPage> {
     }
   }
 
+  void _subscribeRealtime() {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    _channel = Supabase.instance.client
+        .channel('orders_realtime')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'orders',
+          callback: (payload) {
+            _loadOrders();
+            final newStatus = payload.newRecord['status'];
+            if (mounted) {
+              String pesan = '';
+              Color warna = Colors.green;
+              if (newStatus == 'diterima') {
+                pesan = '✅ Driver sudah menerima order kamu!';
+                warna = Colors.blue;
+              } else if (newStatus == 'proses') {
+                pesan = '🛵 Driver sedang dalam perjalanan!';
+                warna = Colors.orange;
+              } else if (newStatus == 'selesai') {
+                pesan = '🎉 Order selesai!';
+                warna = Colors.green;
+              }
+              if (pesan.isNotEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(pesan), backgroundColor: warna),
+                );
+              }
+            }
+          },
+        )
+        .subscribe();
+  }
+
   Color _statusColor(String status) {
     switch (status) {
       case 'menunggu': return Colors.orange;
@@ -41,6 +86,17 @@ class _RiwayatPageState extends State<RiwayatPage> {
       case 'selesai': return Colors.green;
       case 'batal': return Colors.red;
       default: return Colors.grey;
+    }
+  }
+
+  String _statusEmoji(String status) {
+    switch (status) {
+      case 'menunggu': return '⏳';
+      case 'diterima': return '✅';
+      case 'proses': return '🛵';
+      case 'selesai': return '🎉';
+      case 'batal': return '❌';
+      default: return '❓';
     }
   }
 
@@ -65,6 +121,15 @@ class _RiwayatPageState extends State<RiwayatPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: () {
+              setState(() => _isLoading = true);
+              _loadOrders();
+            },
+          ),
+        ],
       ),
       body: _isLoading
         ? const Center(child: CircularProgressIndicator(color: Color(0xFF00B14F)))
@@ -94,50 +159,70 @@ class _RiwayatPageState extends State<RiwayatPage> {
                       BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
                     ],
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF00B14F).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(_jenisIcon(order['jenis']), color: const Color(0xFF00B14F)),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00B14F).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(_jenisIcon(order['jenis']), color: const Color(0xFF00B14F)),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(order['jenis'].toString().toUpperCase(),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                Text('Dari: ${order['alamat_asal']}',
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                                ),
+                                Text('Ke: ${order['alamat_tujuan']}',
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _statusColor(order['status']).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${_statusEmoji(order['status'])} ${order['status']}',
+                              style: TextStyle(
+                                color: _statusColor(order['status']),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      if (order['total_biaya'] != null) ...[
+                        const SizedBox(height: 8),
+                        const Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(order['jenis'].toString().toUpperCase(),
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            Text('Total: Rp ${order['total_biaya'].toStringAsFixed(0)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF00B14F)),
                             ),
-                            const SizedBox(height: 4),
-                            Text('Dari: ${order['alamat_asal']}',
+                            Text(order['metode_bayar'].toString().toUpperCase(),
                               style: const TextStyle(fontSize: 12, color: Colors.grey),
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
-                            ),
-                            Text('Ke: ${order['alamat_tujuan']}',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _statusColor(order['status']).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(order['status'],
-                          style: TextStyle(
-                            color: _statusColor(order['status']),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                      ],
                     ],
                   ),
                 );
