@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NotifService {
-  static const String _token = 'zmuJWmZLfutYEkQJemb1';
-
   static Future<void> kirimNotifDriver({
     required String nomorDriver,
     required String jenisOrder,
@@ -21,19 +19,14 @@ class NotifService {
 💰 Total: Rp ${totalBiaya.toStringAsFixed(0)}
 💳 Bayar: ${metodeBayar.toUpperCase()}
 
-Segera buka aplikasi TitipIn untuk terima order!
-''';
+Segera buka aplikasi TitipIn untuk terima order!''';
 
-    await http.post(
-      Uri.parse('https://api.fonnte.com/send'),
-      headers: {
-        'Authorization': _token,
-        'Content-Type': 'application/json',
+    await Supabase.instance.client.functions.invoke(
+      'kirim-notif',
+      body: {
+        'nomorDriver': nomorDriver,
+        'pesan': pesan,
       },
-      body: jsonEncode({
-        'target': nomorDriver,
-        'message': pesan,
-      }),
     );
   }
 }
