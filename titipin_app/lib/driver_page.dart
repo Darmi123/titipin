@@ -11,11 +11,19 @@ class DriverPage extends StatefulWidget {
 class _DriverPageState extends State<DriverPage> {
   List<Map<String, dynamic>> _orders = [];
   bool _isLoading = true;
+  RealtimeChannel? _channel;
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    _subscribeRealtime();
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
   }
 
   Future<void> _loadOrders() async {
@@ -30,6 +38,28 @@ class _DriverPageState extends State<DriverPage> {
     });
   }
 
+  void _subscribeRealtime() {
+    _channel = Supabase.instance.client
+        .channel('driver_orders')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'orders',
+          callback: (payload) {
+            _loadOrders();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('🛵 Ada order baru masuk!'),
+                  backgroundColor: Color(0xFF00B14F),
+                ),
+              );
+            }
+          },
+        )
+        .subscribe();
+  }
+
   Future<void> _terimaOrder(String orderId) async {
     final user = Supabase.instance.client.auth.currentUser;
     await Supabase.instance.client.from('orders').update({
@@ -39,7 +69,7 @@ class _DriverPageState extends State<DriverPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Order berhasil diterima!'),
+          content: Text('✅ Order berhasil diterima!'),
           backgroundColor: Color(0xFF00B14F),
         ),
       );
@@ -141,7 +171,7 @@ class _DriverPageState extends State<DriverPage> {
                         children: [
                           const Icon(Icons.location_on_outlined, color: Color(0xFF00B14F), size: 16),
                           const SizedBox(width: 4),
-                          Expanded(child: Text(order['alamat_asal'], style: const TextStyle(fontSize: 13))),
+                          Expanded(child: Text(order['alamat_asal'] ?? '-', style: const TextStyle(fontSize: 13))),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -149,9 +179,30 @@ class _DriverPageState extends State<DriverPage> {
                         children: [
                           const Icon(Icons.location_on, color: Colors.red, size: 16),
                           const SizedBox(width: 4),
-                          Expanded(child: Text(order['alamat_tujuan'], style: const TextStyle(fontSize: 13))),
+                          Expanded(child: Text(order['alamat_tujuan'] ?? '-', style: const TextStyle(fontSize: 13))),
                         ],
                       ),
+                      if (order['catatan'] != null && order['catatan'].toString().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.note_outlined, color: Colors.grey, size: 16),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(order['catatan'],
+                                style: const TextStyle(fontSize: 13, color: Colors.grey),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (order['total_biaya'] != null) ...[
+                        const SizedBox(height: 8),
+                        const Divider(),
+                        Text('Total: Rp ${order['total_biaya'].toStringAsFixed(0)}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF00B14F)),
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
