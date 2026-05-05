@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'chat_page.dart';
 
 class RiwayatPage extends StatefulWidget {
   const RiwayatPage({super.key});
@@ -44,7 +45,6 @@ class _RiwayatPageState extends State<RiwayatPage> {
   void _subscribeRealtime() {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
-
     _channel = Supabase.instance.client
         .channel('orders_realtime')
         .onPostgresChanges(
@@ -217,8 +217,18 @@ class _RiwayatPageState extends State<RiwayatPage> {
                             Text('Total: Rp ${order['total_biaya'].toStringAsFixed(0)}',
                               style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF00B14F)),
                             ),
-                            Text(order['metode_bayar'].toString().toUpperCase(),
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            TextButton.icon(
+                              onPressed: () => Navigator.push(context,
+                                MaterialPageRoute(builder: (context) => ChatPage(
+                                  orderId: order['id'],
+                                  lawanChatNama: 'Driver',
+                                )),
+                              ),
+                              icon: const Icon(Icons.chat_outlined, size: 16),
+                              label: const Text('Chat Driver'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFF00B14F),
+                              ),
                             ),
                           ],
                         ),
