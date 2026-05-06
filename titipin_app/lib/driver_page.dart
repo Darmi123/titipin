@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'chat_page.dart';
 
 class DriverPage extends StatefulWidget {
   const DriverPage({super.key});
@@ -190,8 +191,7 @@ class _DriverPageState extends State<DriverPage> {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(order['catatan'],
-                                style: const TextStyle(fontSize: 13, color: Colors.grey),
-                              ),
+                                style: const TextStyle(fontSize: 13, color: Colors.grey)),
                             ),
                           ],
                         ),
@@ -204,17 +204,36 @@ class _DriverPageState extends State<DriverPage> {
                         ),
                       ],
                       const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () => _terimaOrder(order['id']),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF00B14F),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () => _terimaOrder(order['id']),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF00B14F),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Terima Order', style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
                           ),
-                          child: const Text('Terima Order', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: () => Navigator.push(context,
+                              MaterialPageRoute(builder: (context) => ChatPage(
+                                orderId: order['id'],
+                                lawanChatNama: 'Warga',
+                              )),
+                            ),
+                            icon: const Icon(Icons.chat_outlined, size: 16),
+                            label: const Text('Chat'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF00B14F),
+                              side: const BorderSide(color: Color(0xFF00B14F)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
