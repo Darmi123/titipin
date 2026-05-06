@@ -12,22 +12,21 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final _pesanController = TextEditingController();
+  final _focusNode = FocusNode();
   List<Map<String, dynamic>> _chats = [];
   bool _isLoading = true;
-  RealtimeChannel? _channel;
   final _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadChats();
-    _subscribeRealtime();
   }
 
   @override
   void dispose() {
-    _channel?.unsubscribe();
     _pesanController.dispose();
+    _focusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -45,20 +44,6 @@ class _ChatPageState extends State<ChatPage> {
     _scrollToBottom();
   }
 
-  void _subscribeRealtime() {
-    _channel = Supabase.instance.client
-        .channel('chat_${widget.orderId}')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'chats',
-          callback: (payload) {
-            _loadChats();
-          },
-        )
-        .subscribe();
-  }
-
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -72,14 +57,16 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _kirimPesan() async {
-    if (_pesanController.text.trim().isEmpty) return;
+    final teks = _pesanController.text.trim();
+    if (teks.isEmpty) return;
     final user = Supabase.instance.client.auth.currentUser;
+    _pesanController.clear();
     await Supabase.instance.client.from('chats').insert({
       'order_id': widget.orderId,
       'pengirim_id': user!.id,
-      'pesan': _pesanController.text.trim(),
+      'pesan': teks,
     });
-    _pesanController.clear();
+    _loadChats();
   }
 
   @override
@@ -89,17 +76,18 @@ class _ChatPageState extends State<ChatPage> {
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         backgroundColor: const Color(0xFF00B14F),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.lawanChatNama, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            const Text('Chat Order', style: TextStyle(color: Colors.white70, fontSize: 12)),
-          ],
-        ),
+        title: Text(widget.lawanChatNama,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _loadChats,
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -109,7 +97,7 @@ class _ChatPageState extends State<ChatPage> {
               : _chats.isEmpty
                 ? const Center(
                     child: Text('Belum ada pesan. Mulai chat!',
-                      style: TextStyle(color: Colors.grey)),
+                      style: TextStyle(color: Colors.grey, fontSize: 16)),
                   )
                 : ListView.builder(
                     controller: _scrollController,
@@ -123,7 +111,8 @@ class _ChatPageState extends State<ChatPage> {
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.7),
                           decoration: BoxDecoration(
                             color: isMe ? const Color(0xFF00B14F) : Colors.white,
                             borderRadius: BorderRadius.only(
@@ -132,21 +121,12 @@ class _ChatPageState extends State<ChatPage> {
                               bottomLeft: Radius.circular(isMe ? 16 : 4),
                               bottomRight: Radius.circular(isMe ? 4 : 16),
                             ),
-                            boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
-                            ],
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (!isMe)
-                                Text(chat['profiles']['nama'] ?? '',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00B14F)),
-                                ),
-                              Text(chat['pesan'],
-                                style: TextStyle(color: isMe ? Colors.white : Colors.black87, fontSize: 14),
-                              ),
-                            ],
+                          child: Text(chat['pesan'],
+                            style: TextStyle(
+                              color: isMe ? Colors.white : Colors.black87,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
                       );
@@ -154,21 +134,26 @@ class _ChatPageState extends State<ChatPage> {
                   ),
           ),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             color: Colors.white,
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _pesanController,
+                    focusNode: _focusNode,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _kirimPesan(),
                     decoration: InputDecoration(
+                      hintText: 'Ketik pesan...',
+                      filled: true,
+                      fillColor: const Color(0xFFF5F5F5),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide.none,
                       ),
-                      filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
                     ),
                   ),
                 ),
