@@ -162,7 +162,6 @@ class _ChatPageState extends State<ChatPage> {
                   child: TextField(
                     controller: _pesanController,
                     decoration: InputDecoration(
-                      hintText: 'Ketik pesan...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide.none,
