@@ -44,8 +44,6 @@ class _RiwayatPageState extends State<RiwayatPage> {
   }
 
   void _subscribeRealtime() {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
     _channel = Supabase.instance.client
         .channel('orders_realtime')
         .onPostgresChanges(
@@ -218,18 +216,33 @@ class _RiwayatPageState extends State<RiwayatPage> {
                             Text('Total: Rp ${order['total_biaya'].toStringAsFixed(0)}',
                               style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF00B14F)),
                             ),
-                            TextButton.icon(
-                              onPressed: () => Navigator.push(context,
-                                MaterialPageRoute(builder: (context) => ChatPage(
-                                  orderId: order['id'],
-                                  lawanChatNama: 'Driver',
-                                )),
-                              ),
-                              icon: const Icon(Icons.chat_outlined, size: 16),
-                              label: const Text('Chat Driver'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: const Color(0xFF00B14F),
-                              ),
+                            Row(
+                              children: [
+                                if (order['status'] == 'diterima' && order['driver_id'] != null)
+                                  TextButton.icon(
+                                    onPressed: () => Navigator.push(context,
+                                      MaterialPageRoute(builder: (context) => RatingPage(
+                                        orderId: order['id'],
+                                        driverId: order['driver_id'],
+                                      )),
+                                    ),
+                                    icon: const Icon(Icons.star_outline, size: 16, color: Colors.amber),
+                                    label: const Text('Rating', style: TextStyle(color: Colors.amber)),
+                                  ),
+                                TextButton.icon(
+                                  onPressed: () => Navigator.push(context,
+                                    MaterialPageRoute(builder: (context) => ChatPage(
+                                      orderId: order['id'],
+                                      lawanChatNama: 'Driver',
+                                    )),
+                                  ),
+                                  icon: const Icon(Icons.chat_outlined, size: 16),
+                                  label: const Text('Chat'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: const Color(0xFF00B14F),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
