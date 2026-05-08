@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'chat_page.dart';
+import 'rating_page.dart';
 
 class RiwayatPage extends StatefulWidget {
   const RiwayatPage({super.key});
