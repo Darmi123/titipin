@@ -68,7 +68,7 @@ class _RatingPageState extends State<RatingPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
@@ -145,6 +145,7 @@ class _RatingPageState extends State<RatingPage> {
                   : const Text('Kirim Rating', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
+            const SizedBox(height: 32),
           ],
         ),
       ),
