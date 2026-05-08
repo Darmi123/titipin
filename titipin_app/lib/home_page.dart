@@ -5,6 +5,7 @@ import 'order_page.dart';
 import 'riwayat_page.dart';
 import 'driver_page.dart';
 import 'chat_page.dart';
+import 'profil_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -391,7 +392,9 @@ class _HomePageState extends State<HomePage> {
     return GestureDetector(
       onTap: () {
         setState(() => _selectedIndex = index);
-        if (index == 1) {
+        if (index == 4) {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilPage()));
+        } else if (index == 1) {
           Navigator.push(context, MaterialPageRoute(builder: (context) => const RiwayatPage()));
         }
       },
