@@ -96,4 +96,8 @@ class JarakService {
     for (int i = 0; i < 10; i++) z = (z + x/z) / 2;
     return z;
   }
+
+  static Future<Map<String, double>?> getKoordinatPublik(String alamat) async {
+    return await _getKoordinat(alamat);
+  }
 }
