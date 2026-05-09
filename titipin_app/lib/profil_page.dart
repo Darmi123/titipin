@@ -17,6 +17,10 @@ class _ProfilPageState extends State<ProfilPage> {
   bool _isSaving = false;
   String _role = '';
   String _email = '';
+  double _rataRating = 0;
+  int _jumlahRating = 0;
+  int _jumlahOrder = 0;
+  List<Map<String, dynamic>> _ratings = [];
 
   @override
   void initState() {
@@ -32,15 +36,48 @@ class _ProfilPageState extends State<ProfilPage> {
           .select()
           .eq('id', user.id)
           .single();
+      
       setState(() {
         _namaController.text = data['nama'] ?? '';
         _noHpController.text = data['no_hp'] ?? '';
         _alamatController.text = data['alamat'] ?? '';
         _role = data['role'] ?? '';
         _email = user.email ?? '';
-        _isLoading = false;
       });
+
+      if (_role == 'driver') {
+        await _loadRatingDriver(user.id);
+      }
+
+      setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _loadRatingDriver(String driverId) async {
+    final ratings = await Supabase.instance.client
+        .from('ratings')
+        .select('*, profiles!ratings_warga_id_fkey(nama)')
+        .eq('driver_id', driverId)
+        .order('created_at', ascending: false);
+
+    final orders = await Supabase.instance.client
+        .from('orders')
+        .select()
+        .eq('driver_id', driverId)
+        .eq('status', 'selesai');
+
+    final ratingList = List<Map<String, dynamic>>.from(ratings);
+    double total = 0;
+    for (var r in ratingList) {
+      total += (r['rating'] as num).toDouble();
+    }
+
+    setState(() {
+      _ratings = ratingList;
+      _jumlahRating = ratingList.length;
+      _rataRating = ratingList.isEmpty ? 0 : total / ratingList.length;
+      _jumlahOrder = (orders as List).length;
+    });
   }
 
   Future<void> _simpanProfil() async {
@@ -98,7 +135,6 @@ class _ProfilPageState extends State<ProfilPage> {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                // Avatar
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -151,8 +187,110 @@ class _ProfilPageState extends State<ProfilPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                // Form Edit
+                if (_role == 'driver') ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Statistik Driver', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(_rataRating.toStringAsFixed(1),
+                                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.amber),
+                                    ),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: List.generate(5, (i) => Icon(
+                                        i < _rataRating.round() ? Icons.star : Icons.star_border,
+                                        color: Colors.amber, size: 14,
+                                      )),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text('$_jumlahRating ulasan', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF00B14F).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text('$_jumlahOrder',
+                                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF00B14F)),
+                                    ),
+                                    const Icon(Icons.delivery_dining, color: Color(0xFF00B14F), size: 20),
+                                    const SizedBox(height: 4),
+                                    const Text('Order selesai', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_ratings.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          const Text('Ulasan Terbaru', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 12),
+                          ..._ratings.take(3).map((r) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5F7FA),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(r['profiles']?['nama'] ?? 'Warga',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    const Spacer(),
+                                    Row(
+                                      children: List.generate(5, (i) => Icon(
+                                        i < (r['rating'] as num).toInt() ? Icons.star : Icons.star_border,
+                                        color: Colors.amber, size: 14,
+                                      )),
+                                    ),
+                                  ],
+                                ),
+                                if (r['komentar'] != null && r['komentar'].toString().isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(r['komentar'], style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                ],
+                              ],
+                            ),
+                          )),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -171,10 +309,6 @@ class _ProfilPageState extends State<ProfilPage> {
                           labelText: 'Nama Lengkap',
                           prefixIcon: const Icon(Icons.person_outlined, color: Color(0xFF00B14F)),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF00B14F), width: 2),
-                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -185,10 +319,6 @@ class _ProfilPageState extends State<ProfilPage> {
                           labelText: 'No. HP',
                           prefixIcon: const Icon(Icons.phone_outlined, color: Color(0xFF00B14F)),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF00B14F), width: 2),
-                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -199,10 +329,6 @@ class _ProfilPageState extends State<ProfilPage> {
                           labelText: 'Alamat Rumah',
                           prefixIcon: const Icon(Icons.home_outlined, color: Color(0xFF00B14F)),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF00B14F), width: 2),
-                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -224,8 +350,7 @@ class _ProfilPageState extends State<ProfilPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                // Tombol Logout
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -239,6 +364,7 @@ class _ProfilPageState extends State<ProfilPage> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 32),
               ],
             ),
           ),
