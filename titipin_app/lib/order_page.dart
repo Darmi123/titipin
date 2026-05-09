@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'notif_service.dart';
+import 'jarak_service.dart';
 
 class OrderPage extends StatefulWidget {
   final String jenisOrder;
@@ -15,12 +16,13 @@ class _OrderPageState extends State<OrderPage> {
   late TextEditingController _alamatAsalController;
   final _alamatTujuanController = TextEditingController();
   final _catatanController = TextEditingController();
-  final _jarakController = TextEditingController();
   String _metodeBayar = 'cod';
   bool _isLoading = false;
+  bool _isHitungJarak = false;
   double _jarak = 0;
   double _ongkir = 0;
   double _jasaTitip = 2000;
+  String _errorJarak = '';
 
   String get _judulOrder {
     switch (widget.jenisOrder) {
@@ -36,15 +38,38 @@ class _OrderPageState extends State<OrderPage> {
   void initState() {
     super.initState();
     _alamatAsalController = TextEditingController(text: widget.namaTokoAwal ?? '');
-    _jarakController.addListener(_hitungOngkir);
   }
 
-  void _hitungOngkir() {
-    final jarak = double.tryParse(_jarakController.text) ?? 0;
+  Future<void> _hitungJarak() async {
+    if (_alamatAsalController.text.isEmpty || _alamatTujuanController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Isi alamat asal dan tujuan dulu!'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     setState(() {
-      _jarak = jarak;
-      _ongkir = jarak * 2500 + 2000;
+      _isHitungJarak = true;
+      _errorJarak = '';
     });
+
+    final hasil = await JarakService.hitungJarak(
+      alamatAsal: _alamatAsalController.text.trim(),
+      alamatTujuan: _alamatTujuanController.text.trim(),
+    );
+
+    if (hasil.containsKey('error')) {
+      setState(() {
+        _errorJarak = hasil['error'];
+        _isHitungJarak = false;
+      });
+    } else {
+      setState(() {
+        _jarak = hasil['jarak_km'];
+        _ongkir = hasil['ongkir'];
+        _isHitungJarak = false;
+      });
+    }
   }
 
   Future<void> _buatOrder() async {
@@ -65,7 +90,7 @@ class _OrderPageState extends State<OrderPage> {
         'jarak_km': _jarak,
         'catatan': _catatanController.text.trim(),
         'metode_bayar': _metodeBayar,
-        'total_biaya': _ongkir + _jasaTitip,
+        'total_biaya': _jarak > 0 ? _ongkir + _jasaTitip : null,
         'status': 'menunggu',
       });
       await NotifService.kirimNotifDriver(
@@ -74,7 +99,7 @@ class _OrderPageState extends State<OrderPage> {
         alamatAsal: _alamatAsalController.text.trim(),
         alamatTujuan: _alamatTujuanController.text.trim(),
         metodeBayar: _metodeBayar,
-        totalBiaya: _ongkir + _jasaTitip,
+        totalBiaya: _jarak > 0 ? _ongkir + _jasaTitip : 0,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -130,34 +155,47 @@ class _OrderPageState extends State<OrderPage> {
               maxLines: 2,
               decoration: InputDecoration(
                 labelText: 'Alamat Tujuan',
+                hintText: 'Contoh: Desa Bojong RT 01 RW 02',
                 prefixIcon: const Icon(Icons.location_on, color: Colors.red),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _jarakController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Jarak (km)',
-                prefixIcon: const Icon(Icons.social_distance_outlined, color: Color(0xFF00B14F)),
-                suffixText: 'km',
-                helperText: 'Tidak tahu jaraknya? Tanya driver dulu 😊',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isHitungJarak ? null : _hitungJarak,
+                icon: _isHitungJarak
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Icon(Icons.calculate_outlined),
+                label: Text(_isHitungJarak ? 'Menghitung jarak...' : 'Hitung Jarak & Ongkir Otomatis'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00B14F),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
               ),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _catatanController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: 'Catatan (opsional)',
-                prefixIcon: const Icon(Icons.note_outlined),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            if (_errorJarak.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_errorJarak, style: const TextStyle(color: Colors.red, fontSize: 13))),
+                  ],
+                ),
               ),
-            ),
+            ],
             if (_jarak > 0) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -179,6 +217,16 @@ class _OrderPageState extends State<OrderPage> {
                 ),
               ),
             ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: _catatanController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Catatan (opsional)',
+                prefixIcon: const Icon(Icons.note_outlined),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
             const SizedBox(height: 20),
             const Text('Metode Pembayaran', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
@@ -245,6 +293,7 @@ class _OrderPageState extends State<OrderPage> {
                   : const Text('Buat Order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -257,7 +306,7 @@ class _OrderPageState extends State<OrderPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 13, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+          Expanded(child: Text(label, style: TextStyle(fontSize: 13, fontWeight: bold ? FontWeight.bold : FontWeight.normal))),
           Text(nilai, style: TextStyle(fontSize: 13, fontWeight: bold ? FontWeight.bold : FontWeight.normal, color: bold ? const Color(0xFF00B14F) : null)),
         ],
       ),
