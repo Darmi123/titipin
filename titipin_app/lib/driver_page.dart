@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'chat_page.dart';
+import 'driver_aktif_page.dart';
 import 'jarak_service.dart';
 
 class DriverPage extends StatefulWidget {
@@ -180,6 +181,10 @@ class _DriverPageState extends State<DriverPage> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.list_alt, color: Colors.white),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DriverAktifPage())),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: () => _ambilLokasidanMuatOrder(),
