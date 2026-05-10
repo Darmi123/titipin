@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 
 class ChatPage extends StatefulWidget {
   final String orderId;
@@ -15,19 +16,20 @@ class _ChatPageState extends State<ChatPage> {
   final _focusNode = FocusNode();
   List<Map<String, dynamic>> _chats = [];
   bool _isLoading = true;
-  RealtimeChannel? _channel;
   final _scrollController = ScrollController();
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _loadChats();
-    _subscribeRealtime();
+    // Auto refresh setiap 3 detik
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _loadChats());
   }
 
   @override
   void dispose() {
-    _channel?.unsubscribe();
+    _timer?.cancel();
     _pesanController.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
@@ -47,31 +49,6 @@ class _ChatPageState extends State<ChatPage> {
       });
       _scrollToBottom();
     }
-  }
-
-  void _subscribeRealtime() {
-    _channel = Supabase.instance.client
-        .channel('chat_realtime_${widget.orderId}')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'chats',
-          callback: (payload) async {
-            final newChat = payload.newRecord;
-            // Fetch nama pengirim
-            final profile = await Supabase.instance.client
-                .from('profiles')
-                .select('nama')
-                .eq('id', newChat['pengirim_id'])
-                .single();
-            newChat['profiles'] = profile;
-            if (mounted) {
-              setState(() => _chats.add(newChat));
-              _scrollToBottom();
-            }
-          },
-        )
-        .subscribe();
   }
 
   void _scrollToBottom() {
@@ -96,6 +73,7 @@ class _ChatPageState extends State<ChatPage> {
       'pengirim_id': user!.id,
       'pesan': teks,
     });
+    _loadChats();
   }
 
   @override
@@ -144,9 +122,6 @@ class _ChatPageState extends State<ChatPage> {
                               bottomLeft: Radius.circular(isMe ? 16 : 4),
                               bottomRight: Radius.circular(isMe ? 4 : 16),
                             ),
-                            boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
-                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
