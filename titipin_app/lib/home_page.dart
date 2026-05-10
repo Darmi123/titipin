@@ -1,3 +1,4 @@
+import 'widgets/notification_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_page.dart';
@@ -103,27 +104,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           const Spacer(),
-                          Stack(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-                                onPressed: () {},
-                              ),
-                              Positioned(
-                                right: 8, top: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.all(3),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.orange,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Text('3',
-                                    style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          const NotificationBadge(),
                           if (_role == 'driver')
                             IconButton(
                               icon: const Icon(Icons.delivery_dining, color: Colors.white),

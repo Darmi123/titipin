@@ -1,3 +1,4 @@
+import 'services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'register_page.dart';
@@ -23,12 +24,14 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      NotificationService().init();
       if (mounted) {
         Navigator.pushReplacement(context,
           MaterialPageRoute(builder: (context) => const HomePage()),
         );
       }
     } catch (e) {
+      NotificationService().init();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Email atau password salah!'), backgroundColor: Colors.red),
