@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'notif_service.dart';
-import 'jarak_service.dart';
 
 class OrderPage extends StatefulWidget {
   final String jenisOrder;
@@ -14,15 +13,33 @@ class OrderPage extends StatefulWidget {
 
 class _OrderPageState extends State<OrderPage> {
   late TextEditingController _alamatAsalController;
-  final _alamatTujuanController = TextEditingController();
   final _catatanController = TextEditingController();
   String _metodeBayar = 'cod';
   bool _isLoading = false;
-  bool _isHitungJarak = false;
   double _jarak = 0;
   double _ongkir = 0;
-  double _jasaTitip = 2000;
-  String _errorJarak = '';
+  final double _jasaTitip = 2000;
+  String? _desaTerpilih;
+
+  final List<Map<String, dynamic>> _daftarDesa = [
+    {'nama': 'Bojong', 'jarak': 1.0},
+    {'nama': 'Babakan', 'jarak': 2.0},
+    {'nama': 'Tuwel', 'jarak': 3.2},
+    {'nama': 'Kemaron', 'jarak': 6.0},
+    {'nama': 'Pekandangan', 'jarak': 7.6},
+    {'nama': 'Guci', 'jarak': 8.0},
+    {'nama': 'Bumijawa', 'jarak': 11.0},
+    {'nama': 'Buniwah', 'jarak': 2.0},
+    {'nama': 'Karang Jambu', 'jarak': 4.5},
+    {'nama': 'Cilongok', 'jarak': 11.0},
+    {'nama': 'Lengkong', 'jarak': 3.0},
+    {'nama': 'Batunyana', 'jarak': 4.5},
+    {'nama': 'Praban', 'jarak': 7.3},
+    {'nama': 'Cikura', 'jarak': 10.0},
+    {'nama': 'Rembul', 'jarak': 6.0},
+    {'nama': 'Kedawung', 'jarak': 8.0},
+    {'nama': 'Simpar', 'jarak': 8.6},
+  ];
 
   String get _judulOrder {
     switch (widget.jenisOrder) {
@@ -40,42 +57,20 @@ class _OrderPageState extends State<OrderPage> {
     _alamatAsalController = TextEditingController(text: widget.namaTokoAwal ?? '');
   }
 
-  Future<void> _hitungJarak() async {
-    if (_alamatAsalController.text.isEmpty || _alamatTujuanController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Isi alamat asal dan tujuan dulu!'), backgroundColor: Colors.red),
-      );
-      return;
-    }
-
+  void _pilihDesa(String? nama) {
+    if (nama == null) return;
+    final desa = _daftarDesa.firstWhere((d) => d['nama'] == nama);
     setState(() {
-      _isHitungJarak = true;
-      _errorJarak = '';
+      _desaTerpilih = nama;
+      _jarak = desa['jarak'];
+      _ongkir = _jarak * 2500 + 2000;
     });
-
-    final hasil = await JarakService.hitungJarak(
-      alamatAsal: _alamatAsalController.text.trim(),
-      alamatTujuan: _alamatTujuanController.text.trim(),
-    );
-
-    if (hasil.containsKey('error')) {
-      setState(() {
-        _errorJarak = hasil['error'];
-        _isHitungJarak = false;
-      });
-    } else {
-      setState(() {
-        _jarak = hasil['jarak_km'];
-        _ongkir = hasil['ongkir'];
-        _isHitungJarak = false;
-      });
-    }
   }
 
   Future<void> _buatOrder() async {
-    if (_alamatAsalController.text.isEmpty || _alamatTujuanController.text.isEmpty) {
+    if (_alamatAsalController.text.isEmpty || _desaTerpilih == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Alamat asal dan tujuan wajib diisi!'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('Isi alamat asal dan pilih desa tujuan!'), backgroundColor: Colors.red),
       );
       return;
     }
@@ -86,20 +81,20 @@ class _OrderPageState extends State<OrderPage> {
         'warga_id': user!.id,
         'jenis': widget.jenisOrder,
         'alamat_asal': _alamatAsalController.text.trim(),
-        'alamat_tujuan': _alamatTujuanController.text.trim(),
+        'alamat_tujuan': 'Desa $_desaTerpilih',
         'jarak_km': _jarak,
         'catatan': _catatanController.text.trim(),
         'metode_bayar': _metodeBayar,
-        'total_biaya': _jarak > 0 ? _ongkir + _jasaTitip : null,
+        'total_biaya': _ongkir + _jasaTitip,
         'status': 'menunggu',
       });
       await NotifService.kirimNotifDriver(
         nomorDriver: '6285156411914',
         jenisOrder: widget.jenisOrder,
         alamatAsal: _alamatAsalController.text.trim(),
-        alamatTujuan: _alamatTujuanController.text.trim(),
+        alamatTujuan: 'Desa $_desaTerpilih',
         metodeBayar: _metodeBayar,
-        totalBiaya: _jarak > 0 ? _ongkir + _jasaTitip : 0,
+        totalBiaya: _ongkir + _jasaTitip,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -150,50 +145,35 @@ class _OrderPageState extends State<OrderPage> {
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _alamatTujuanController,
-              maxLines: 2,
-              decoration: InputDecoration(
-                labelText: 'Alamat Tujuan',
-                hintText: 'Contoh: Desa Bojong RT 01 RW 02',
-                prefixIcon: const Icon(Icons.location_on, color: Colors.red),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade400),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _desaTerpilih,
+                        hint: const Text('Pilih Desa Tujuan'),
+                        isExpanded: true,
+                        items: _daftarDesa.map((desa) {
+                          return DropdownMenuItem<String>(
+                            value: desa['nama'],
+                            child: Text('${desa['nama']} (${desa['jarak']} km)'),
+                          );
+                        }).toList(),
+                        onChanged: _pilihDesa,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isHitungJarak ? null : _hitungJarak,
-                icon: _isHitungJarak
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Icon(Icons.calculate_outlined),
-                label: Text(_isHitungJarak ? 'Menghitung jarak...' : 'Hitung Jarak & Ongkir Otomatis'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00B14F),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-            if (_errorJarak.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(_errorJarak, style: const TextStyle(color: Colors.red, fontSize: 13))),
-                  ],
-                ),
-              ),
-            ],
             if (_jarak > 0) ...[
               const SizedBox(height: 16),
               Container(
@@ -208,7 +188,7 @@ class _OrderPageState extends State<OrderPage> {
                   children: [
                     const Text('Rincian Biaya', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 12),
-                    _biayaRow('Jarak', '${_jarak.toStringAsFixed(1)} km'),
+                    _biayaRow('Jarak', '$_jarak km'),
                     _biayaRow('Ongkir (Rp 2.500/km + Rp 2.000)', 'Rp ${_ongkir.toStringAsFixed(0)}'),
                     _biayaRow('Jasa Titip', 'Rp ${_jasaTitip.toStringAsFixed(0)}'),
                     const Divider(),
