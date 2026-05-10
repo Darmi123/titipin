@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
-
+import 'services/notification_service.dart';
 class ChatPage extends StatefulWidget {
   final String orderId;
   final String lawanChatNama;
@@ -73,6 +73,22 @@ class _ChatPageState extends State<ChatPage> {
       'pengirim_id': user!.id,
       'pesan': teks,
     });
+    final order = await Supabase.instance.client
+        .from('orders')
+        .select('user_id, driver_id')
+        .eq('id', widget.orderId)
+        .single();
+    final recipientId = order['user_id'] == user!.id
+        ? order['driver_id']
+        : order['user_id'];
+    if (recipientId != null) {
+      await NotificationService().notifyNewChat(
+        recipientId: recipientId,
+        senderName: widget.lawanChatNama,
+        message: teks,
+        chatRoomId: widget.orderId,
+      );
+    }
     _loadChats();
   }
 
