@@ -15,16 +15,19 @@ class _ChatPageState extends State<ChatPage> {
   final _focusNode = FocusNode();
   List<Map<String, dynamic>> _chats = [];
   bool _isLoading = true;
+  RealtimeChannel? _channel;
   final _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _loadChats();
+    _subscribeRealtime();
   }
 
   @override
   void dispose() {
+    _channel?.unsubscribe();
     _pesanController.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
@@ -37,11 +40,38 @@ class _ChatPageState extends State<ChatPage> {
         .select('*, profiles(nama)')
         .eq('order_id', widget.orderId)
         .order('created_at', ascending: true);
-    setState(() {
-      _chats = List<Map<String, dynamic>>.from(data);
-      _isLoading = false;
-    });
-    _scrollToBottom();
+    if (mounted) {
+      setState(() {
+        _chats = List<Map<String, dynamic>>.from(data);
+        _isLoading = false;
+      });
+      _scrollToBottom();
+    }
+  }
+
+  void _subscribeRealtime() {
+    _channel = Supabase.instance.client
+        .channel('chat_realtime_${widget.orderId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'chats',
+          callback: (payload) async {
+            final newChat = payload.newRecord;
+            // Fetch nama pengirim
+            final profile = await Supabase.instance.client
+                .from('profiles')
+                .select('nama')
+                .eq('id', newChat['pengirim_id'])
+                .single();
+            newChat['profiles'] = profile;
+            if (mounted) {
+              setState(() => _chats.add(newChat));
+              _scrollToBottom();
+            }
+          },
+        )
+        .subscribe();
   }
 
   void _scrollToBottom() {
@@ -66,7 +96,6 @@ class _ChatPageState extends State<ChatPage> {
       'pengirim_id': user!.id,
       'pesan': teks,
     });
-    _loadChats();
   }
 
   @override
@@ -82,12 +111,6 @@ class _ChatPageState extends State<ChatPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _loadChats,
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -121,12 +144,24 @@ class _ChatPageState extends State<ChatPage> {
                               bottomLeft: Radius.circular(isMe ? 16 : 4),
                               bottomRight: Radius.circular(isMe ? 4 : 16),
                             ),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
+                            ],
                           ),
-                          child: Text(chat['pesan'],
-                            style: TextStyle(
-                              color: isMe ? Colors.white : Colors.black87,
-                              fontSize: 14,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (!isMe && chat['profiles'] != null)
+                                Text(chat['profiles']['nama'] ?? '',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00B14F)),
+                                ),
+                              Text(chat['pesan'],
+                                style: TextStyle(
+                                  color: isMe ? Colors.white : Colors.black87,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );
