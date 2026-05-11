@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
-import 'services/notification_service.dart';
+
 class ChatPage extends StatefulWidget {
   final String orderId;
   final String lawanChatNama;
@@ -23,7 +23,6 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     _loadChats();
-    // Auto refresh setiap 3 detik
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _loadChats());
   }
 
@@ -67,28 +66,13 @@ class _ChatPageState extends State<ChatPage> {
     final teks = _pesanController.text.trim();
     if (teks.isEmpty) return;
     final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
     _pesanController.clear();
     await Supabase.instance.client.from('chats').insert({
       'order_id': widget.orderId,
-      'pengirim_id': user!.id,
+      'pengirim_id': user.id,
       'pesan': teks,
     });
-    final order = await Supabase.instance.client
-        .from('orders')
-        .select('user_id, driver_id')
-        .eq('id', widget.orderId)
-        .single();
-    final recipientId = order['user_id'] == user!.id
-        ? order['driver_id']
-        : order['user_id'];
-    if (recipientId != null) {
-      await NotificationService().notifyNewChat(
-        recipientId: recipientId,
-        senderName: widget.lawanChatNama,
-        message: teks,
-        chatRoomId: widget.orderId,
-      );
-    }
     _loadChats();
   }
 
