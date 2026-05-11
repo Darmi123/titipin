@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'notif_service.dart';
+import 'services/notification_service.dart';
 
 class OrderPage extends StatefulWidget {
   final String jenisOrder;
@@ -77,7 +78,7 @@ class _OrderPageState extends State<OrderPage> {
     setState(() => _isLoading = true);
     try {
       final user = Supabase.instance.client.auth.currentUser;
-      await Supabase.instance.client.from('orders').insert({
+      final orderData = await Supabase.instance.client.from('orders').insert({
         'warga_id': user!.id,
         'jenis': widget.jenisOrder,
         'alamat_asal': _alamatAsalController.text.trim(),
@@ -87,7 +88,20 @@ class _OrderPageState extends State<OrderPage> {
         'metode_bayar': _metodeBayar,
         'total_biaya': _ongkir + _jasaTitip,
         'status': 'menunggu',
-      });
+      }).select().single();
+      final orderId = orderData['id'] as String;
+      // Ambil semua driver aktif
+      final drivers = await Supabase.instance.client
+          .from('profiles')
+          .select('id')
+          .eq('role', 'driver');
+      for (final driver in drivers) {
+        await NotificationService().notifyDriverNewOrder(
+          driverId: driver['id'] as String,
+          orderId: orderId,
+          orderInfo: '${widget.jenisOrder} → Desa $_desaTerpilih',
+        );
+      }
       await NotifService.kirimNotifDriver(
         nomorDriver: '6285156411914',
         jenisOrder: widget.jenisOrder,
