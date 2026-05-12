@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 import 'services/notification_service.dart';
+
 class ChatPage extends StatefulWidget {
   final String orderId;
   final String lawanChatNama;
@@ -68,27 +69,37 @@ class _ChatPageState extends State<ChatPage> {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
     _pesanController.clear();
+
     await Supabase.instance.client.from('chats').insert({
       'order_id': widget.orderId,
       'pengirim_id': user.id,
       'pesan': teks,
     });
-   final order = await Supabase.instance.client
-        .from('orders')
-        .select('warga_id, driver_id')
-        .eq('id', widget.orderId)
-        .single();
-    final recipientId = order['warga_id'] == user.id
-        ? order['driver_id']
-        : order['warga_id'];
-    if (recipientId != null) {
-      await NotificationService().notifyNewChat(
-        recipientId: recipientId as String,
-        senderName: widget.lawanChatNama,
-        message: teks,
-        chatRoomId: widget.orderId,
-      );
+
+    // Kirim notifikasi ke lawan chat
+    try {
+      final order = await Supabase.instance.client
+          .from('orders')
+          .select('warga_id, driver_id')
+          .eq('id', widget.orderId)
+          .single();
+
+      final recipientId = order['warga_id'] == user.id
+          ? order['driver_id']
+          : order['warga_id'];
+
+      if (recipientId != null) {
+        await NotificationService().notifyNewChat(
+          recipientId: recipientId,
+          senderName: widget.lawanChatNama,
+          message: teks,
+          chatRoomId: widget.orderId,
+        );
+      }
+    } catch (e) {
+      // Notif gagal tidak perlu stop chat
     }
+
     _loadChats();
   }
 
