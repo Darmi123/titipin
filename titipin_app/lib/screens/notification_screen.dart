@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
+import '../chat_page.dart';
+import '../riwayat_page.dart';
+import '../driver_aktif_page.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -23,18 +26,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: const Text('Notifikasi', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF00B14F),
+        title: const Text('Notifikasi', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
           Consumer<NotificationService>(
             builder: (context, notifService, _) {
               if (notifService.unreadCount == 0) return const SizedBox();
               return TextButton(
                 onPressed: notifService.markAllAsRead,
-                child: Text('Baca Semua', style: TextStyle(color: theme.colorScheme.primary)),
+                child: const Text('Baca Semua', style: TextStyle(color: Colors.white)),
               );
             },
           ),
@@ -43,22 +50,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
       body: Consumer<NotificationService>(
         builder: (context, notifService, _) {
           if (notifService.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator(color: Color(0xFF00B14F)));
           }
           final notifications = notifService.notifications;
           if (notifications.isEmpty) {
-            return Center(
+            return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('🔔', style: TextStyle(fontSize: 64)),
-                  const SizedBox(height: 16),
-                  const Text('Belum ada notifikasi',
+                  Text('🔔', style: TextStyle(fontSize: 64)),
+                  SizedBox(height: 16),
+                  Text('Belum ada notifikasi',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text('Notifikasi order dan pesan\nakan muncul di sini',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey[500])),
+                      style: TextStyle(color: Colors.grey)),
                 ],
               ),
             );
@@ -86,9 +93,23 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   void _handleTap(BuildContext context, NotificationModel notif, NotificationService service) {
     if (!notif.isRead) service.markAsRead(notif.id);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(notif.title)),
-    );
+    
+    if (notif.type == 'chat_new' && notif.chatRoomId != null) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => ChatPage(
+          orderId: notif.chatRoomId!,
+          lawanChatNama: 'Chat',
+        ),
+      ));
+    } else if (notif.type == 'order_new') {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => const DriverAktifPage(),
+      ));
+    } else if (notif.type == 'order_accepted') {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => const RiwayatPage(),
+      ));
+    }
   }
 }
 
@@ -115,7 +136,7 @@ class _NotificationTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          color: isUnread ? const Color(0xFFE8F4FD) : Colors.white,
+          color: isUnread ? const Color(0xFFE8F5E9) : Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,7 +144,7 @@ class _NotificationTile extends StatelessWidget {
               Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(
-                  color: Color(notif.colorValue).withOpacity(0.15),
+                  color: const Color(0xFF00B14F).withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Center(child: Text(notif.icon, style: const TextStyle(fontSize: 22))),
@@ -144,7 +165,10 @@ class _NotificationTile extends StatelessWidget {
                         if (isUnread)
                           Container(
                             width: 8, height: 8,
-                            decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF00B14F),
+                              shape: BoxShape.circle,
+                            ),
                           ),
                       ],
                     ),
