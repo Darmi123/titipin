@@ -1,4 +1,5 @@
 import 'widgets/notification_badge.dart';
+import 'services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_page.dart';
@@ -34,6 +35,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadProfile();
+    NotificationService().init();
   }
 
   Future<void> _loadProfile() async {
