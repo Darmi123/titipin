@@ -6,6 +6,7 @@ import '../services/notification_service.dart';
 import '../chat_page.dart';
 import '../riwayat_page.dart';
 import '../driver_aktif_page.dart';
+import '../driver_page.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -103,7 +104,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       ));
     } else if (notif.type == 'order_new') {
       Navigator.push(context, MaterialPageRoute(
-        builder: (context) => const DriverAktifPage(),
+        builder: (context) => const DriverPage(),
       ));
     } else if (notif.type == 'order_accepted') {
       Navigator.push(context, MaterialPageRoute(
