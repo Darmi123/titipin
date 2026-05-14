@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
-import 'dart:html' as html;
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_page.dart';
 import 'riwayat_page.dart';
@@ -73,23 +73,15 @@ class _ProfilPageState extends State<ProfilPage> {
 
 
   Future<void> _uploadFoto() async {
-    final input = html.FileUploadInputElement()..accept = 'image/*';
-    html.document.body!.append(input);
-    input.style.display = 'none';
-    input.click();
-    await input.onChange.first;
-    input.remove();
-    if (input.files == null || input.files!.isEmpty) return;
-    final file = input.files!.first;
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null) return;
     setState(() => _isUploadingFoto = true);
     try {
-      final reader = html.FileReader();
-      reader.readAsArrayBuffer(file);
-      await reader.onLoad.first;
-      final bytes = Uint8List.fromList((reader.result as List<dynamic>).cast<int>());
+      final bytes = await picked.readAsBytes();
       final user = Supabase.instance.client.auth.currentUser!;
-      final ext = file.name.split('.').last;
-      final path = '${user.id}.$ext';
+      final ext = picked.name.split('.').last;
+      final path = '\${user.id}.\$ext';
       await Supabase.instance.client.storage
           .from('avatars')
           .uploadBinary(path, bytes, fileOptions: const FileOptions(upsert: true));
@@ -107,7 +99,7 @@ class _ProfilPageState extends State<ProfilPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: \$e'), backgroundColor: Colors.red),
         );
       }
     } finally {
