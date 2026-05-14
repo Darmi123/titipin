@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'chat_page.dart';
 import 'driver_aktif_page.dart';
 import 'jarak_service.dart';
+import 'services/notification_service.dart';
 
 class DriverPage extends StatefulWidget {
   const DriverPage({super.key});
@@ -24,6 +25,7 @@ class _DriverPageState extends State<DriverPage> {
     super.initState();
     _ambilLokasidanMuatOrder();
     _subscribeRealtime();
+    NotificationService().fetchNotifications();
   }
 
   @override
