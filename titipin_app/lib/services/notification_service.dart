@@ -20,6 +20,7 @@ class NotificationService extends ChangeNotifier {
 
   Future<void> init() async {
     await fetchNotifications();
+    await Future.delayed(const Duration(milliseconds: 500));
     _subscribeRealtime();
   }
 
