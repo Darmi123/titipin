@@ -74,8 +74,11 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Future<void> _uploadFoto() async {
     final input = html.FileUploadInputElement()..accept = 'image/*';
+    html.document.body!.append(input);
+    input.style.display = 'none';
     input.click();
     await input.onChange.first;
+    input.remove();
     if (input.files == null || input.files!.isEmpty) return;
     final file = input.files!.first;
     setState(() => _isUploadingFoto = true);
