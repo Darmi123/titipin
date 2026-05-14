@@ -12,6 +12,7 @@ class NotificationService extends ChangeNotifier {
 
   List<NotificationModel> _notifications = [];
   RealtimeChannel? _channel;
+  Timer? _pollingTimer;
   bool _isLoading = false;
 
   List<NotificationModel> get notifications => List.unmodifiable(_notifications);
@@ -22,10 +23,19 @@ class NotificationService extends ChangeNotifier {
     await fetchNotifications();
     await Future.delayed(const Duration(milliseconds: 500));
     _subscribeRealtime();
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      fetchNotifications();
+    });
   }
 
   @override
   void dispose() {
+    _pollingTimer?.cancel();
     _channel?.unsubscribe();
     super.dispose();
   }
