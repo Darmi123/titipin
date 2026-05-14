@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
+import 'dart:html' as html;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_page.dart';
 import 'riwayat_page.dart';
@@ -16,6 +18,8 @@ class _ProfilPageState extends State<ProfilPage> {
   final _alamatController = TextEditingController();
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isUploadingFoto = false;
+  String? _fotoUrl;
   String _role = '';
   String _email = '';
   double _rataRating = 0;
@@ -56,6 +60,7 @@ class _ProfilPageState extends State<ProfilPage> {
         _alamatController.text = data['alamat'] ?? '';
         _role = data['role'] ?? '';
         _email = user.email ?? '';
+        _fotoUrl = data['foto_url'];
       });
       if (_role == 'driver') {
         await _loadRatingDriver(user.id);
@@ -63,6 +68,47 @@ class _ProfilPageState extends State<ProfilPage> {
         await _loadOrderWarga(user.id);
       }
       setState(() => _isLoading = false);
+    }
+  }
+
+
+  Future<void> _uploadFoto() async {
+    final input = html.FileUploadInputElement()..accept = 'image/*';
+    input.click();
+    await input.onChange.first;
+    if (input.files == null || input.files!.isEmpty) return;
+    final file = input.files!.first;
+    setState(() => _isUploadingFoto = true);
+    try {
+      final reader = html.FileReader();
+      reader.readAsArrayBuffer(file);
+      await reader.onLoad.first;
+      final bytes = Uint8List.fromList((reader.result as List<dynamic>).cast<int>());
+      final user = Supabase.instance.client.auth.currentUser!;
+      final ext = file.name.split('.').last;
+      final path = '${user.id}.$ext';
+      await Supabase.instance.client.storage
+          .from('avatars')
+          .uploadBinary(path, bytes, fileOptions: const FileOptions(upsert: true));
+      final url = Supabase.instance.client.storage
+          .from('avatars')
+          .getPublicUrl(path);
+      await Supabase.instance.client.from('profiles')
+          .update({'foto_url': url}).eq('id', user.id);
+      setState(() => _fotoUrl = url);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto profil diperbarui!'), backgroundColor: Color(0xFF00B14F)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      setState(() => _isUploadingFoto = false);
     }
   }
 
