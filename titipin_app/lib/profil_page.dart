@@ -209,25 +209,42 @@ class _ProfilPageState extends State<ProfilPage> {
                         children: [
                           const SizedBox(height: 40),
                           // Avatar
-                          Stack(
-                            children: [
-                              Container(
-                                width: 90, height: 90,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 3),
+                          GestureDetector(
+                            onTap: _uploadFoto,
+                            child: Stack(
+                              children: [
+                                Container(
+                                  width: 90, height: 90,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 3),
+                                  ),
+                                  child: _isUploadingFoto
+                                    ? const CircularProgressIndicator(color: Colors.white)
+                                    : ClipOval(
+                                        child: _fotoUrl != null
+                                          ? Image.network(_fotoUrl!, fit: BoxFit.cover, width: 90, height: 90)
+                                          : Center(
+                                              child: Text(
+                                                _namaController.text.isNotEmpty
+                                                    ? _namaController.text[0].toUpperCase()
+                                                    : '?',
+                                                style: const TextStyle(fontSize: 38, fontWeight: FontWeight.bold, color: Colors.white),
+                                              ),
+                                            ),
+                                      ),
                                 ),
-                                child: Center(
-                                  child: Text(
-                                    _namaController.text.isNotEmpty
-                                        ? _namaController.text[0].toUpperCase()
-                                        : '?',
-                                    style: const TextStyle(fontSize: 38, fontWeight: FontWeight.bold, color: Colors.white),
+                                Positioned(
+                                  bottom: 0, right: 0,
+                                  child: Container(
+                                    width: 28, height: 28,
+                                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                    child: const Icon(Icons.camera_alt, size: 16, color: Color(0xFF00B14F)),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 10),
                           Text(_namaController.text,
