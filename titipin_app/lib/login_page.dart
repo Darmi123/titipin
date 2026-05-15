@@ -65,8 +65,6 @@ class _LoginPageState extends State<LoginPage> {
                     width: 180,
                     height: 180,
                     fit: BoxFit.contain,
-                    color: Colors.white,
-                    colorBlendMode: BlendMode.srcIn,
                     loadingBuilder: (context, child, progress) {
                       if (progress == null) return child;
                       return const SizedBox(
