@@ -140,41 +140,23 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 16),
                       // Banner Promo
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text('PROMO LAUNCHING!',
-                                      style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  const Text('Diskon Ongkir 50%',
-                                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                                  ),
-                                  const Text('SEMUA ORDER – MINGGU INI SAJA!',
-                                    style: TextStyle(color: Colors.white70, fontSize: 11),
-                                  ),
-                                ],
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.network(
+                          'https://taqaukbucwkyfhdlytqt.supabase.co/storage/v1/object/public/assets/IMG-20260515-WA0000.jpg',
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              height: 160,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                            ),
-                            const Text('🛵', style: TextStyle(fontSize: 48)),
-                          ],
+                              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+                            );
+                          },
                         ),
                       ),
                     ],
