@@ -269,7 +269,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
-                  height: 140,
+                  height: 160,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: _tokoRekomendasi.length,
@@ -277,7 +277,7 @@ class _HomePageState extends State<HomePage> {
                       final toko = _tokoRekomendasi[index];
                       final isBuka = toko['status'] == 'BUKA';
                       return Container(
-                        width: 150,
+                        width: 130,
                         margin: const EdgeInsets.only(right: 12),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
