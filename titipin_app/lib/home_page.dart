@@ -398,7 +398,7 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text('Hai, $_nama! 👋',
+                  Text('Hai, ${_nama.replaceAll(' Driver', '').replaceAll(' driver', '')}! 👋',
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   const Text('Mager? titipin aja. Kami yang beliin & antar.',
