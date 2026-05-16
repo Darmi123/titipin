@@ -223,7 +223,7 @@ class _HomePageState extends State<HomePage> {
                       _layananItem('🛒', 'Belanja\nKebutuhan', 'Harian', 'Belanja Kebutuhan', const Color(0xFFE8F5E9)),
                       _layananItem('🍔', 'Makanan &\nMinuman', 'Cepat saji, jajan', 'Makanan & Minuman', const Color(0xFFFFF3E0)),
                       _layananItem('💊', 'Obat &\nKesehatan', 'Aman & asli', 'Obat & Kesehatan', const Color(0xFFE3F2FD)),
-                      _layananItem('📦', 'Titip Barang\n& Dokumen', 'Aman sampai tujuan', 'Titip Barang', const Color(0xFFFCE4EC)),
+                      _layananItem('📦', 'Titip\nBarang', 'Aman & sampai', 'Titip Barang', const Color(0xFFFCE4EC)),
                     ],
                   ),
                 ),
