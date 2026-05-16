@@ -277,7 +277,7 @@ class _HomePageState extends State<HomePage> {
                       final toko = _tokoRekomendasi[index];
                       final isBuka = toko['status'] == 'BUKA';
                       return Container(
-                        width: 160,
+                        width: 150,
                         margin: const EdgeInsets.only(right: 12),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
