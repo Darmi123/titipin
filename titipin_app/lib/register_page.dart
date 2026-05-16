@@ -16,6 +16,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final _alamatController = TextEditingController();
   final _nikController = TextEditingController();
   final _platController = TextEditingController();
+  final _merkController = TextEditingController();
+  final _warnaController = TextEditingController();
   bool _obscurePassword = true;
   String _selectedRole = 'warga';
   bool _isLoading = false;
@@ -57,6 +59,8 @@ class _RegisterPageState extends State<RegisterPage> {
           if (_selectedRole == 'driver') ...{
             'nik': _nikController.text.trim(),
             'no_plat': _platController.text.trim(),
+            'merk_kendaraan': _merkController.text.trim(),
+            'warna_kendaraan': _warnaController.text.trim(),
             'status_verifikasi': 'pending',
           } else ...{
             'status_verifikasi': 'aktif',
@@ -264,6 +268,10 @@ class _RegisterPageState extends State<RegisterPage> {
                           _inputField(_nikController, 'NIK (No. KTP)', Icons.badge_outlined, type: TextInputType.number),
                           const SizedBox(height: 12),
                           _inputField(_platController, 'Nomor Plat Kendaraan', Icons.directions_bike_outlined),
+                          const SizedBox(height: 12),
+                          _inputField(_merkController, 'Merk Kendaraan (Honda, Yamaha, dll)', Icons.two_wheeler_outlined),
+                          const SizedBox(height: 12),
+                          _inputField(_warnaController, 'Warna Kendaraan', Icons.color_lens_outlined),
                           const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.all(12),
