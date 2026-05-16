@@ -398,7 +398,7 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text('Hai, $_nama Driver! 👋',
+                  Text('Hai, $_nama! 👋',
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   const Text('Mager? titipin aja. Kami yang beliin & antar.',
@@ -421,6 +421,88 @@ class _HomePageState extends State<HomePage> {
                     width: double.infinity,
                     height: 160,
                     fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Tombol mulai narik
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverPage())),
+                    icon: const Icon(Icons.delivery_dining, color: Colors.white),
+                    label: const Text('Lihat Order Masuk', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00B14F),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Info singkat driver
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.monetization_on, color: Color(0xFF00B14F), size: 32),
+                            const SizedBox(height: 8),
+                            const Text('Rp 2.000', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF00B14F))),
+                            const Text('Per Token', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.star, color: Colors.amber, size: 32),
+                            const SizedBox(height: 8),
+                            const Text('Mulai Narik', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amber)),
+                            const Text('Cari Order', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Tips driver
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('💡 Tips Driver', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      _tipItem('🪙', 'Beli token dulu sebelum mulai narik order'),
+                      _tipItem('📱', 'Aktifkan notifikasi agar tidak ketinggalan order'),
+                      _tipItem('⭐', 'Jaga rating untuk dapat lebih banyak order'),
+                      _tipItem('🛵', 'Pastikan kendaraan siap sebelum berangkat'),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 80),
@@ -468,6 +550,19 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 2),
           Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
           Text(desc, style: const TextStyle(fontSize: 9, color: Colors.grey), textAlign: TextAlign.center, maxLines: 3),
+        ],
+      ),
+    );
+  }
+
+  Widget _tipItem(String icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 18)),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 13, color: Colors.grey))),
         ],
       ),
     );
