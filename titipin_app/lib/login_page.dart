@@ -54,7 +54,7 @@ class _LoginPageState extends State<LoginPage> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF00B14F), Color(0xFF007A36)],
+                  colors: [Colors.white, Colors.white],
                 ),
               ),
               child: Column(
