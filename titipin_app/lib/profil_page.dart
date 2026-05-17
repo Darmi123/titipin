@@ -8,7 +8,6 @@ import 'riwayat_page.dart';
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
-
   @override
   State<ProfilPage> createState() => _ProfilPageState();
 }
@@ -20,14 +19,23 @@ class _ProfilPageState extends State<ProfilPage> {
   bool _isLoading = true;
   bool _isSaving = false;
   bool _isUploadingFoto = false;
-  String? _fotoUrl;
   String _role = '';
   String _email = '';
   double _rataRating = 0;
   int _jumlahRating = 0;
   int _jumlahOrder = 0;
   int _jumlahOrderWarga = 0;
+  String? _fotoUrl;
   List<Map<String, dynamic>> _ratings = [];
+
+  final List<Map<String, dynamic>> _semuaBadge = [
+    {'emoji': '🌱', 'nama': 'Warga Baru', 'desc': 'Bergabung dengan TitipIn', 'syarat': 0},
+    {'emoji': '🛵', 'nama': 'Order Pertama', 'desc': 'Selesaikan 1 order', 'syarat': 1},
+    {'emoji': '⭐', 'nama': 'Pelanggan Setia', 'desc': 'Selesaikan 10 order', 'syarat': 10},
+    {'emoji': '👑', 'nama': 'Member VIP', 'desc': 'Selesaikan 20 order', 'syarat': 20},
+    {'emoji': '🎯', 'nama': 'Loyalis', 'desc': 'Selesaikan 30 order', 'syarat': 30},
+    {'emoji': '🏆', 'nama': 'Legenda', 'desc': 'Selesaikan 50 order', 'syarat': 50},
+  ];
 
   String get _statusMember {
     if (_jumlahOrderWarga >= 20) return 'VIP 👑';
@@ -51,10 +59,7 @@ class _ProfilPageState extends State<ProfilPage> {
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
       final data = await Supabase.instance.client
-          .from('profiles')
-          .select()
-          .eq('id', user.id)
-          .single();
+          .from('profiles').select().eq('id', user.id).single();
       setState(() {
         _namaController.text = data['nama'] ?? '';
         _noHpController.text = data['no_hp'] ?? '';
@@ -72,6 +77,30 @@ class _ProfilPageState extends State<ProfilPage> {
     }
   }
 
+  Future<void> _loadOrderWarga(String wargaId) async {
+    final orders = await Supabase.instance.client
+        .from('orders').select().eq('warga_id', wargaId);
+    setState(() => _jumlahOrderWarga = (orders as List).length);
+  }
+
+  Future<void> _loadRatingDriver(String driverId) async {
+    final ratings = await Supabase.instance.client
+        .from('ratings')
+        .select('*, profiles!ratings_warga_id_fkey(nama)')
+        .eq('driver_id', driverId)
+        .order('created_at', ascending: false);
+    final orders = await Supabase.instance.client
+        .from('orders').select().eq('driver_id', driverId).eq('status', 'selesai');
+    final ratingList = List<Map<String, dynamic>>.from(ratings);
+    double total = 0;
+    for (var r in ratingList) { total += (r['rating'] as num).toDouble(); }
+    setState(() {
+      _ratings = ratingList;
+      _jumlahRating = ratingList.length;
+      _rataRating = ratingList.isEmpty ? 0 : total / ratingList.length;
+      _jumlahOrder = (orders as List).length;
+    });
+  }
 
   Future<void> _uploadFoto() async {
     final completer = Completer<html.File?>();
@@ -102,9 +131,7 @@ class _ProfilPageState extends State<ProfilPage> {
       await Supabase.instance.client.storage
           .from('avatars')
           .uploadBinary(path, bytes, fileOptions: const FileOptions(upsert: true));
-      final url = Supabase.instance.client.storage
-          .from('avatars')
-          .getPublicUrl(path);
+      final url = Supabase.instance.client.storage.from('avatars').getPublicUrl(path);
       await Supabase.instance.client.from('profiles')
           .update({'foto_url': url}).eq('id', user.id);
       setState(() => _fotoUrl = url);
@@ -116,44 +143,12 @@ class _ProfilPageState extends State<ProfilPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: \$e'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('Gagal upload foto'), backgroundColor: Colors.red),
         );
       }
     } finally {
       setState(() => _isUploadingFoto = false);
     }
-  }
-
-  Future<void> _loadOrderWarga(String wargaId) async {
-    final orders = await Supabase.instance.client
-        .from('orders')
-        .select()
-        .eq('warga_id', wargaId);
-    setState(() => _jumlahOrderWarga = (orders as List).length);
-  }
-
-  Future<void> _loadRatingDriver(String driverId) async {
-    final ratings = await Supabase.instance.client
-        .from('ratings')
-        .select('*, profiles!ratings_warga_id_fkey(nama)')
-        .eq('driver_id', driverId)
-        .order('created_at', ascending: false);
-    final orders = await Supabase.instance.client
-        .from('orders')
-        .select()
-        .eq('driver_id', driverId)
-        .eq('status', 'selesai');
-    final ratingList = List<Map<String, dynamic>>.from(ratings);
-    double total = 0;
-    for (var r in ratingList) {
-      total += (r['rating'] as num).toDouble();
-    }
-    setState(() {
-      _ratings = ratingList;
-      _jumlahRating = ratingList.length;
-      _rataRating = ratingList.isEmpty ? 0 : total / ratingList.length;
-      _jumlahOrder = (orders as List).length;
-    });
   }
 
   Future<void> _simpanProfil() async {
@@ -166,14 +161,15 @@ class _ProfilPageState extends State<ProfilPage> {
         'alamat': _alamatController.text.trim(),
       }).eq('id', user!.id);
       if (mounted) {
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Profil berhasil disimpan!'), backgroundColor: Color(0xFF00B14F)),
+          const SnackBar(content: Text('Profil berhasil disimpan!'), backgroundColor: Color(0xFF00B14F)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('Gagal menyimpan profil'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -181,12 +177,58 @@ class _ProfilPageState extends State<ProfilPage> {
     }
   }
 
+  void _showEditProfil() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Edit Profil', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            Text(_email, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 16),
+            _inputField(_namaController, 'Nama Lengkap', Icons.person_outlined),
+            const SizedBox(height: 12),
+            _inputField(_noHpController, 'No. HP', Icons.phone_outlined, type: TextInputType.phone),
+            const SizedBox(height: 12),
+            _inputField(_alamatController, 'Alamat Rumah', Icons.home_outlined, maxLines: 2),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _simpanProfil,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00B14F),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _isSaving
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Simpan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _logout() async {
     await Supabase.instance.client.auth.signOut();
     if (mounted) {
-      Navigator.pushReplacement(context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
-      );
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage()));
     }
   }
 
@@ -198,15 +240,21 @@ class _ProfilPageState extends State<ProfilPage> {
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF00B14F)))
           : CustomScrollView(
               slivers: [
-                // Header dengan gradient
                 SliverAppBar(
                   expandedHeight: 200,
                   pinned: true,
                   backgroundColor: const Color(0xFF00B14F),
+                  automaticallyImplyLeading: false,
                   leading: IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
                     onPressed: () => Navigator.pop(context),
                   ),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.menu, color: Colors.white),
+                      onPressed: _showEditProfil,
+                    ),
+                  ],
                   flexibleSpace: FlexibleSpaceBar(
                     background: Container(
                       decoration: const BoxDecoration(
@@ -220,7 +268,6 @@ class _ProfilPageState extends State<ProfilPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const SizedBox(height: 40),
-                          // Avatar
                           GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: _uploadFoto,
@@ -234,19 +281,17 @@ class _ProfilPageState extends State<ProfilPage> {
                                     border: Border.all(color: Colors.white, width: 3),
                                   ),
                                   child: _isUploadingFoto
-                                    ? const CircularProgressIndicator(color: Colors.white)
-                                    : ClipOval(
-                                        child: _fotoUrl != null
-                                          ? Image.network(_fotoUrl!, fit: BoxFit.cover, width: 90, height: 90)
-                                          : Center(
-                                              child: Text(
-                                                _namaController.text.isNotEmpty
-                                                    ? _namaController.text[0].toUpperCase()
-                                                    : '?',
-                                                style: const TextStyle(fontSize: 38, fontWeight: FontWeight.bold, color: Colors.white),
-                                              ),
-                                            ),
-                                      ),
+                                      ? const CircularProgressIndicator(color: Colors.white)
+                                      : ClipOval(
+                                          child: _fotoUrl != null
+                                              ? Image.network(_fotoUrl!, fit: BoxFit.cover, width: 90, height: 90)
+                                              : Center(
+                                                  child: Text(
+                                                    _namaController.text.isNotEmpty ? _namaController.text[0].toUpperCase() : '?',
+                                                    style: const TextStyle(fontSize: 38, fontWeight: FontWeight.bold, color: Colors.white),
+                                                  ),
+                                                ),
+                                        ),
                                 ),
                                 Positioned(
                                   bottom: 0, right: 0,
@@ -260,19 +305,6 @@ class _ProfilPageState extends State<ProfilPage> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          ElevatedButton.icon(
-                            onPressed: _uploadFoto,
-                            icon: const Icon(Icons.camera_alt, size: 16),
-                            label: const Text('Ganti Foto'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF00B14F),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
                           Text(_namaController.text,
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
@@ -299,6 +331,96 @@ class _ProfilPageState extends State<ProfilPage> {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
+                        // Badge Pencapaian
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Text('🏅', style: TextStyle(fontSize: 20)),
+                                  SizedBox(width: 8),
+                                  Text('Pencapaian', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  childAspectRatio: 0.85,
+                                  crossAxisSpacing: 10,
+                                  mainAxisSpacing: 10,
+                                ),
+                                itemCount: _semuaBadge.length,
+                                itemBuilder: (context, index) {
+                                  final badge = _semuaBadge[index];
+                                  final unlocked = _jumlahOrderWarga >= (badge['syarat'] as int);
+                                  return GestureDetector(
+                                    onTap: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (_) => AlertDialog(
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(unlocked ? badge['emoji'] : '🔒', style: const TextStyle(fontSize: 48)),
+                                              const SizedBox(height: 8),
+                                              Text(badge['nama'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                              const SizedBox(height: 4),
+                                              Text(badge['desc'], style: const TextStyle(color: Colors.grey, fontSize: 13), textAlign: TextAlign.center),
+                                              if (!unlocked) ...[
+                                                const SizedBox(height: 8),
+                                                Text('Butuh ${badge['syarat']} order', style: const TextStyle(color: Color(0xFF00B14F), fontWeight: FontWeight.bold)),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: unlocked ? const Color(0xFF00B14F).withOpacity(0.08) : Colors.grey.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: unlocked ? const Color(0xFF00B14F).withOpacity(0.3) : Colors.grey.withOpacity(0.2),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(unlocked ? badge['emoji'] : '🔒',
+                                            style: TextStyle(fontSize: 28, color: unlocked ? null : Colors.grey),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(badge['nama'],
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: unlocked ? const Color(0xFF00B14F) : Colors.grey,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 2,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
 
                         // Status Member (untuk warga)
                         if (_role != 'driver') ...[
@@ -313,10 +435,7 @@ class _ProfilPageState extends State<ProfilPage> {
                               children: [
                                 Container(
                                   width: 56, height: 56,
-                                  decoration: BoxDecoration(
-                                    color: _statusColor.withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
+                                  decoration: BoxDecoration(color: _statusColor.withOpacity(0.1), shape: BoxShape.circle),
                                   child: Center(
                                     child: Text(
                                       _jumlahOrderWarga >= 20 ? '👑' : _jumlahOrderWarga >= 10 ? '⭐' : '🌱',
@@ -332,9 +451,7 @@ class _ProfilPageState extends State<ProfilPage> {
                                       Text('Member $_statusMember',
                                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _statusColor),
                                       ),
-                                      Text('$_jumlahOrderWarga order dilakukan',
-                                        style: const TextStyle(fontSize: 13, color: Colors.grey),
-                                      ),
+                                      Text('$_jumlahOrderWarga order dilakukan', style: const TextStyle(fontSize: 13, color: Colors.grey)),
                                       const SizedBox(height: 6),
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(10),
@@ -347,11 +464,9 @@ class _ProfilPageState extends State<ProfilPage> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        _jumlahOrderWarga >= 20
-                                            ? 'Level maksimal!'
-                                            : _jumlahOrderWarga >= 10
-                                                ? '${20 - _jumlahOrderWarga} order lagi untuk VIP'
-                                                : '${10 - _jumlahOrderWarga} order lagi untuk Setia',
+                                        _jumlahOrderWarga >= 20 ? 'Level maksimal!' :
+                                        _jumlahOrderWarga >= 10 ? '${20 - _jumlahOrderWarga} order lagi untuk VIP' :
+                                        '${10 - _jumlahOrderWarga} order lagi untuk Setia',
                                         style: TextStyle(fontSize: 11, color: _statusColor),
                                       ),
                                     ],
@@ -362,14 +477,8 @@ class _ProfilPageState extends State<ProfilPage> {
                           ),
                           const SizedBox(height: 12),
 
-                          // Riwayat Order shortcut
-                          _menuTile(
-                            icon: Icons.receipt_long_outlined,
-                            label: 'Riwayat Order',
-                            sub: '$_jumlahOrderWarga order',
-                            onTap: () => Navigator.push(context,
-                              MaterialPageRoute(builder: (_) => const RiwayatPage()),
-                            ),
+                          _menuTile(icon: Icons.receipt_long_outlined, label: 'Riwayat Order', sub: '$_jumlahOrderWarga order',
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RiwayatPage())),
                           ),
                           const SizedBox(height: 12),
                         ],
@@ -390,21 +499,9 @@ class _ProfilPageState extends State<ProfilPage> {
                                 const SizedBox(height: 16),
                                 Row(
                                   children: [
-                                    Expanded(child: _statBox(
-                                      value: _rataRating.toStringAsFixed(1),
-                                      label: '$_jumlahRating ulasan',
-                                      icon: Icons.star,
-                                      color: Colors.amber,
-                                      isRating: true,
-                                      rating: _rataRating,
-                                    )),
+                                    Expanded(child: _statBox(value: _rataRating.toStringAsFixed(1), label: '$_jumlahRating ulasan', icon: Icons.star, color: Colors.amber, isRating: true, rating: _rataRating)),
                                     const SizedBox(width: 12),
-                                    Expanded(child: _statBox(
-                                      value: '$_jumlahOrder',
-                                      label: 'Order selesai',
-                                      icon: Icons.delivery_dining,
-                                      color: const Color(0xFF00B14F),
-                                    )),
+                                    Expanded(child: _statBox(value: '$_jumlahOrder', label: 'Order selesai', icon: Icons.delivery_dining, color: const Color(0xFF00B14F))),
                                   ],
                                 ),
                                 if (_ratings.isNotEmpty) ...[
@@ -414,23 +511,15 @@ class _ProfilPageState extends State<ProfilPage> {
                                   ..._ratings.take(3).map((r) => Container(
                                     margin: const EdgeInsets.only(bottom: 8),
                                     padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF5F7FA),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                                    decoration: BoxDecoration(color: const Color(0xFFF5F7FA), borderRadius: BorderRadius.circular(12)),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
-                                            Text(r['profiles']?['nama'] ?? 'Warga',
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                            ),
+                                            Text(r['profiles']?['nama'] ?? 'Warga', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                             const Spacer(),
-                                            Row(children: List.generate(5, (i) => Icon(
-                                              i < (r['rating'] as num).toInt() ? Icons.star : Icons.star_border,
-                                              color: Colors.amber, size: 14,
-                                            ))),
+                                            Row(children: List.generate(5, (i) => Icon(i < (r['rating'] as num).toInt() ? Icons.star : Icons.star_border, color: Colors.amber, size: 14))),
                                           ],
                                         ),
                                         if (r['komentar'] != null && r['komentar'].toString().isNotEmpty) ...[
@@ -446,47 +535,6 @@ class _ProfilPageState extends State<ProfilPage> {
                           ),
                           const SizedBox(height: 12),
                         ],
-
-                        // Info Akun
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Edit Profil', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 4),
-                              Text(_email, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                              const SizedBox(height: 16),
-                              _inputField(_namaController, 'Nama Lengkap', Icons.person_outlined),
-                              const SizedBox(height: 12),
-                              _inputField(_noHpController, 'No. HP', Icons.phone_outlined, type: TextInputType.phone),
-                              const SizedBox(height: 12),
-                              _inputField(_alamatController, 'Alamat Rumah', Icons.home_outlined, maxLines: 3),
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: ElevatedButton(
-                                  onPressed: _isSaving ? null : _simpanProfil,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF00B14F),
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                  child: _isSaving
-                                      ? const CircularProgressIndicator(color: Colors.white)
-                                      : const Text('Simpan Perubahan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
 
                         // Logout
                         SizedBox(
@@ -526,10 +574,7 @@ class _ProfilPageState extends State<ProfilPage> {
           children: [
             Container(
               width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: const Color(0xFF00B14F).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
+              decoration: BoxDecoration(color: const Color(0xFF00B14F).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
               child: Icon(icon, color: const Color(0xFF00B14F)),
             ),
             const SizedBox(width: 14),
@@ -552,21 +597,12 @@ class _ProfilPageState extends State<ProfilPage> {
   Widget _statBox({required String value, required String label, required IconData icon, required Color color, bool isRating = false, double rating = 0}) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
           Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: color)),
           if (isRating)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (i) => Icon(
-                i < rating.round() ? Icons.star : Icons.star_border,
-                color: color, size: 14,
-              )),
-            )
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(5, (i) => Icon(i < rating.round() ? Icons.star : Icons.star_border, color: color, size: 14)))
           else
             Icon(icon, color: color, size: 20),
           const SizedBox(height: 4),
