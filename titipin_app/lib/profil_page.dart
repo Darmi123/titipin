@@ -98,7 +98,7 @@ class _ProfilPageState extends State<ProfilPage> {
       final bytes = Uint8List.fromList((reader.result as List<dynamic>).cast<int>());
       final user = Supabase.instance.client.auth.currentUser!;
       final ext = file.name.split('.').last;
-      final path = '\${user.id}.\$ext';
+      final path = user.id + '.' + ext;
       await Supabase.instance.client.storage
           .from('avatars')
           .uploadBinary(path, bytes, fileOptions: const FileOptions(upsert: true));
