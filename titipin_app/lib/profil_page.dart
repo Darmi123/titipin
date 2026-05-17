@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'dart:typed_data';
-import 'package:image_picker/image_picker.dart';
+import 'dart:html' as html;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_page.dart';
 import 'riwayat_page.dart';
@@ -73,14 +74,30 @@ class _ProfilPageState extends State<ProfilPage> {
 
 
   Future<void> _uploadFoto() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked == null) return;
+    final completer = Completer<html.File?>();
+    final input = html.FileUploadInputElement()
+      ..accept = 'image/*'
+      ..style.display = 'none';
+    html.document.body!.children.add(input);
+    input.onChange.listen((_) {
+      if (input.files!.isNotEmpty) {
+        completer.complete(input.files!.first);
+      } else {
+        completer.complete(null);
+      }
+    });
+    input.click();
+    final file = await completer.future;
+    input.remove();
+    if (file == null) return;
     setState(() => _isUploadingFoto = true);
     try {
-      final bytes = await picked.readAsBytes();
+      final reader = html.FileReader();
+      reader.readAsArrayBuffer(file);
+      await reader.onLoad.first;
+      final bytes = Uint8List.fromList((reader.result as List<dynamic>).cast<int>());
       final user = Supabase.instance.client.auth.currentUser!;
-      final ext = picked.name.split('.').last;
+      final ext = file.name.split('.').last;
       final path = '\${user.id}.\$ext';
       await Supabase.instance.client.storage
           .from('avatars')
