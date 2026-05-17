@@ -205,6 +205,7 @@ class _ProfilPageState extends State<ProfilPage> {
                           const SizedBox(height: 40),
                           // Avatar
                           GestureDetector(
+                            behavior: HitTestBehavior.opaque,
                             onTap: _uploadFoto,
                             child: Stack(
                               children: [
