@@ -785,7 +785,7 @@
     // Cek apakah admin (role = 'admin' atau email tertentu)
     const { data: profile } = await supabase.from('profiles').select('nama, role').eq('id', data.user.id).single();
 
-    if (!profile || (profile.role !== 'admin' && email !== 'darmibaru288@gmail.com')) {
+    if (email !== 'magnetuang2@gmail.com') {
       alertEl.innerHTML = '<div class="alert alert-error">Akun ini bukan admin!</div>';
       await supabase.auth.signOut();
       return;
@@ -1202,7 +1202,7 @@
   const { data: { session } } = await supabase.auth.getSession();
   if (session) {
     const { data: profile } = await supabase.from('profiles').select('nama, role').eq('id', session.user.id).single();
-    if (profile && (profile.role === 'admin' || session.user.email === 'darmibaru288@gmail.com')) {
+    if (session.user.email === 'magnetuang2@gmail.com') {
       document.getElementById('loginPage').style.display = 'none';
       document.getElementById('adminName').textContent = profile.nama || session.user.email;
       loadAllData();
